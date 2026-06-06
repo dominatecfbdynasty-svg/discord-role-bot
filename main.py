@@ -1,9 +1,30 @@
+import fix_audioop
+import discord
+from discord.ext import commands
+import os
+from dotenv import load_dotenv
+import requests
+
+load_dotenv()
+
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+WORDPRESS_SITE = os.getenv('WORDPRESS_SITE', 'https://dominatecfbdynasty.com')
+PROFILEPRESS_API = os.getenv('PROFILEPRESS_API')
+
+@bot.event
+async def on_ready():
+    print(f'✅ Bot logged in as {bot.user}')
+    print(f'🔗 Ready to verify members via ProfilePress')
+
 @bot.command()
 async def verify(ctx, email: str):
     """Verify membership: !verify user@email.com"""
     
     try:
-        # Check ProfilePress for this email
         headers = {'Authorization': f'Bearer {PROFILEPRESS_API}'}
         
         response = requests.get(
@@ -21,7 +42,6 @@ async def verify(ctx, email: str):
                 data = response.json()
                 print(f"Parsed data: {data}")
                 
-                # Check if member exists
                 if isinstance(data, dict):
                     is_active = data.get('is_active') or data.get('subscription_status') == 'active'
                 elif isinstance(data, list) and len(data) > 0:
@@ -47,3 +67,9 @@ async def verify(ctx, email: str):
     except Exception as e:
         print(f"Error: {e}")
         await ctx.send(f"❌ Verification failed. Try again or contact support.")
+
+@bot.event
+async def on_command_error(ctx, error):
+    await ctx.send(f"❌ Error: {error}")
+
+bot.run(os.getenv('DISCORD_TOKEN'))
