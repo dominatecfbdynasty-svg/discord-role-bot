@@ -1,3 +1,6 @@
+import fix_audioop  # Must be first!
+import discord
+from discord.ext import commands
 import discord
 from discord.ext import commands
 import os
