@@ -4,7 +4,8 @@ import discord
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
-import anthropic
+import requests
+import json
 
 sys.stdout = open(sys.stdout.fileno(), mode='w', buffering=1)
 
@@ -19,9 +20,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 GUILD_ID = int(os.getenv('GUILD_ID', '0'))
 CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY')
 
-# Read CFB 27 knowledge files
-CFB27_CONTEXT = """
-You are an expert College Football 25 (CFB 27) dynasty mode coach. You have deep knowledge of:
+CFB27_CONTEXT = """You are an expert College Football 27 dynasty mode coach. You have deep knowledge of:
 - Recruiting strategies and pitch types
 - Player development and trait progression
 - Defensive and offensive schemes
@@ -30,15 +29,12 @@ You are an expert College Football 25 (CFB 27) dynasty mode coach. You have deep
 - Game strategy and playcalling
 
 When answering questions about CFB 27, be specific, practical, and actionable. 
-Reference game mechanics when relevant. Keep answers concise but informative.
-"""
-
-client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+Reference game mechanics when relevant. Keep answers concise but informative."""
 
 @bot.event
 async def on_ready():
     print(f'✅ Bot online', flush=True)
-    print(f'Claude API connected', flush=True)
+    print(f'Claude API ready', flush=True)
 
 @bot.event
 async def on_member_join(member):
@@ -68,25 +64,45 @@ async def cfb27(ctx, *, question: str):
     try:
         await ctx.send("🤔 Thinking...")
         
-        message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=1024,
-            system=CFB27_CONTEXT,
-            messages=[
+        headers = {
+            "x-api-key": CLAUDE_API_KEY,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json"
+        }
+        
+        data = {
+            "model": "claude-3-5-sonnet-20241022",
+            "max_tokens": 1024,
+            "system": CFB27_CONTEXT,
+            "messages": [
                 {"role": "user", "content": question}
             ]
+        }
+        
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers=headers,
+            json=data,
+            timeout=30
         )
         
-        response = message.content[0].text
-        print(f"Claude response: {response[:100]}", flush=True)
+        print(f"API Status: {response.status_code}", flush=True)
         
-        # Split long responses into chunks (Discord 2000 char limit)
-        if len(response) > 2000:
-            chunks = [response[i:i+2000] for i in range(0, len(response), 2000)]
-            for i, chunk in enumerate(chunks):
-                await ctx.send(chunk)
+        if response.status_code == 200:
+            result = response.json()
+            answer = result['content'][0]['text']
+            print(f"Claude response: {answer[:100]}", flush=True)
+            
+            # Split long responses (Discord 2000 char limit)
+            if len(answer) > 2000:
+                chunks = [answer[i:i+2000] for i in range(0, len(answer), 2000)]
+                for chunk in chunks:
+                    await ctx.send(chunk)
+            else:
+                await ctx.send(answer)
         else:
-            await ctx.send(response)
+            print(f"API Error: {response.text}", flush=True)
+            await ctx.send(f"❌ API Error: {response.status_code}")
     
     except Exception as e:
         print(f"Error: {e}", flush=True)
@@ -103,7 +119,6 @@ Examples:
 - `!cfb27 What's the best way to build a QB in dynasty?`
 - `!cfb27 How do recruiting pitches work?`
 - `!cfb27 What offensive scheme should I run?`
-- `!cfb27 How do I develop young players efficiently?`
 """
     await ctx.send(help_text)
 
