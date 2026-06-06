@@ -20,6 +20,9 @@ WORDPRESS_SITE = os.getenv('WORDPRESS_SITE', 'https://dominatecfbdynasty.com')
 WORDPRESS_USER = os.getenv('WORDPRESS_USER', 'david@dominatecfbdynasty.com')
 WORDPRESS_PASS = os.getenv('WORDPRESS_PASS')
 
+# Use session to handle cookies
+session = requests.Session()
+
 @bot.event
 async def on_ready():
     print(f'✅ Bot online', flush=True)
@@ -34,21 +37,23 @@ async def verify(ctx, email: str):
         url = f"{WORDPRESS_SITE}/wp-json/profilepress/v1/members"
         
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json'
         }
         
         print(f"URL: {url}", flush=True)
         
-        response = requests.get(
+        response = session.get(
             url,
             params={"email": email},
             auth=HTTPBasicAuth(WORDPRESS_USER, WORDPRESS_PASS),
             headers=headers,
-            timeout=5
+            timeout=5,
+            allow_redirects=False
         )
         
         print(f"Status: {response.status_code}", flush=True)
-        print(f"Response: {response.text[:200]}", flush=True)
+        print(f"Response: {response.text[:300]}", flush=True)
         
         if response.status_code in [200, 202]:
             data = response.json()
