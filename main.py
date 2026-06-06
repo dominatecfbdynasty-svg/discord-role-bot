@@ -59,7 +59,7 @@ async def on_member_join(member):
 async def cfb27(ctx, *, question: str):
     """Ask a CFB 27 dynasty mode question - !cfb27 <question>"""
     
-    print(f"CFB27 question from {ctx.author}: {question}", flush=True)
+    print(f"CFB27 question: {question}", flush=True)
     
     try:
         await ctx.send("🤔 Thinking...")
@@ -71,7 +71,7 @@ async def cfb27(ctx, *, question: str):
         }
         
         data = {
-            "model": "claude-3-5-sonnet-20241022",
+            "model": "claude-opus-4-1-20250805",
             "max_tokens": 1024,
             "system": CFB27_CONTEXT,
             "messages": [
@@ -86,14 +86,13 @@ async def cfb27(ctx, *, question: str):
             timeout=30
         )
         
-        print(f"API Status: {response.status_code}", flush=True)
+        print(f"Status: {response.status_code}", flush=True)
         
         if response.status_code == 200:
             result = response.json()
             answer = result['content'][0]['text']
-            print(f"Claude response: {answer[:100]}", flush=True)
+            print(f"Response: {answer[:100]}", flush=True)
             
-            # Split long responses (Discord 2000 char limit)
             if len(answer) > 2000:
                 chunks = [answer[i:i+2000] for i in range(0, len(answer), 2000)]
                 for chunk in chunks:
@@ -101,11 +100,11 @@ async def cfb27(ctx, *, question: str):
             else:
                 await ctx.send(answer)
         else:
-            print(f"API Error: {response.text}", flush=True)
+            print(f"Error: {response.text}", flush=True)
             await ctx.send(f"❌ API Error: {response.status_code}")
     
     except Exception as e:
-        print(f"Error: {e}", flush=True)
+        print(f"Exception: {e}", flush=True)
         await ctx.send(f"❌ Error: {str(e)}")
 
 @bot.command()
