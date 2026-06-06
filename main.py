@@ -4,8 +4,6 @@ import discord
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
-import requests
-from requests.auth import HTTPBasicAuth
 
 sys.stdout = open(sys.stdout.fileno(), mode='w', buffering=1)
 
@@ -13,76 +11,34 @@ load_dotenv()
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-WORDPRESS_SITE = os.getenv('WORDPRESS_SITE', 'https://dominatecfbdynasty.com')
-WORDPRESS_USER = os.getenv('WORDPRESS_USER', 'david@dominatecfbdynasty.com')
-WORDPRESS_PASS = os.getenv('WORDPRESS_PASS')
-
-# Use session to handle cookies
-session = requests.Session()
+GUILD_ID = int(os.getenv('GUILD_ID', '0'))
 
 @bot.event
 async def on_ready():
     print(f'✅ Bot online', flush=True)
 
-@bot.command()
-async def verify(ctx, email: str):
-    """Verify membership: !verify user@email.com"""
-    
-    print(f"VERIFY TRIGGERED: {email}", flush=True)
+@bot.event
+async def on_member_join(member):
+    """Auto-assign Premium Member role to anyone who joins"""
+    print(f"Member joined: {member.name}", flush=True)
     
     try:
-        url = f"{WORDPRESS_SITE}/wp-json/profilepress/v1/members"
+        guild = member.guild
+        role = discord.utils.get(guild.roles, name="Premium Member")
         
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept': 'application/json'
-        }
-        
-        print(f"URL: {url}", flush=True)
-        
-        response = session.get(
-            url,
-            params={"email": email},
-            auth=HTTPBasicAuth(WORDPRESS_USER, WORDPRESS_PASS),
-            headers=headers,
-            timeout=5,
-            allow_redirects=False
-        )
-        
-        print(f"Status: {response.status_code}", flush=True)
-        print(f"Response: {response.text[:300]}", flush=True)
-        
-        if response.status_code in [200, 202]:
-            data = response.json()
-            print(f"Parsed JSON: {data}", flush=True)
-            
-            is_active = False
-            
-            if isinstance(data, list) and len(data) > 0:
-                is_active = data[0].get('is_active') or data[0].get('subscription_status') == 'active'
-            elif isinstance(data, dict):
-                is_active = data.get('is_active') or data.get('subscription_status') == 'active'
-            
-            print(f"Is Active: {is_active}", flush=True)
-            
-            if is_active:
-                role = discord.utils.get(ctx.guild.roles, name="Premium Member")
-                if role:
-                    await ctx.author.add_roles(role)
-                    await ctx.send(f"✅ Verified as Premium Member!")
-                else:
-                    await ctx.send("❌ Premium Member role not found")
-            else:
-                await ctx.send("❌ Not an active member")
+        if role:
+            await member.add_roles(role)
+            print(f"Premium Member role assigned to {member.name}", flush=True)
+            await member.send("✅ Welcome! You've been granted Premium Member access.")
         else:
-            await ctx.send(f"❌ API error: {response.status_code}")
+            print(f"Premium Member role not found", flush=True)
     
     except Exception as e:
-        print(f"Exception: {type(e).__name__}: {e}", flush=True)
-        await ctx.send(f"❌ Error: {str(e)}")
+        print(f"Error assigning role: {e}", flush=True)
 
 @bot.event
 async def on_command_error(ctx, error):
