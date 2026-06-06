@@ -32,17 +32,23 @@ async def verify(ctx, email: str):
     
     try:
         url = f"{WORDPRESS_SITE}/wp-json/profilepress/v1/members"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
         print(f"URL: {url}", flush=True)
         
         response = requests.get(
             url,
             params={"email": email},
             auth=HTTPBasicAuth(WORDPRESS_USER, WORDPRESS_PASS),
+            headers=headers,
             timeout=5
         )
         
         print(f"Status: {response.status_code}", flush=True)
-        print(f"Response: {response.text}", flush=True)
+        print(f"Response: {response.text[:200]}", flush=True)
         
         if response.status_code in [200, 202]:
             data = response.json()
@@ -61,11 +67,11 @@ async def verify(ctx, email: str):
                 role = discord.utils.get(ctx.guild.roles, name="Premium Member")
                 if role:
                     await ctx.author.add_roles(role)
-                    await ctx.send(f"✅ {ctx.author.mention} verified as Premium Member!")
+                    await ctx.send(f"✅ Verified as Premium Member!")
                 else:
                     await ctx.send("❌ Premium Member role not found")
             else:
-                await ctx.send("❌ Email not found or subscription not active")
+                await ctx.send("❌ Not an active member")
         else:
             await ctx.send(f"❌ API error: {response.status_code}")
     
